@@ -59,6 +59,7 @@ elastic_addr = localhost:9200
 index = projects
 featurestore_index = featurestore
 app_provenance_index = appprovenance
+ml_provenance_index = ml
 elastic_batch = 5000
 ewait_time = 5000
 

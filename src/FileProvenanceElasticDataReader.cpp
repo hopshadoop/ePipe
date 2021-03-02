@@ -17,8 +17,8 @@
 #include "FileProvenanceElasticDataReader.h"
 
 FileProvenanceElasticDataReader::FileProvenanceElasticDataReader(SConn hopsConn, const bool hopsworks,
-        int file_lru_cap, int xattr_lru_cap, int inodes_lru_cap)
-: NdbDataReader(hopsConn, hopsworks), mFileLogTable(file_lru_cap, xattr_lru_cap), inodesTable(inodes_lru_cap) {
+        int file_lru_cap, int xattr_lru_cap, int inodes_lru_cap, const std::string ml_index)
+: NdbDataReader(hopsConn, hopsworks), mFileLogTable(file_lru_cap, xattr_lru_cap), inodesTable(inodes_lru_cap), mMLIndex(ml_index)  {
 }
 
 class ElasticHelper {
@@ -52,7 +52,6 @@ public:
     dataVal.AddMember("project_name",     rapidjson::Value().SetString(row.mProjectName.c_str(), dataAlloc), dataAlloc);
     dataVal.AddMember("ml_id",            rapidjson::Value().SetString(mlId.c_str(), dataAlloc), dataAlloc);
     dataVal.AddMember("ml_type",          rapidjson::Value().SetString(FileProvenanceConstants::MLTypeToStr(mlType).c_str(), dataAlloc), dataAlloc);
-    dataVal.AddMember("entry_type",       rapidjson::Value().SetString("state", dataAlloc), dataAlloc);
     dataVal.AddMember("partition_id",     rapidjson::Value().SetInt64(row.mPartitionId), dataAlloc);
     dataVal.AddMember("r_create_timestamp",    rapidjson::Value().SetString(readable_timestamp(row.mTimestamp).c_str(), dataAlloc), dataAlloc);
     
@@ -302,7 +301,7 @@ public:
     dataVal.AddMember("entry_type",       rapidjson::Value().SetString("operation", dataAlloc), dataAlloc);
     dataVal.AddMember("partition_id",     rapidjson::Value().SetInt64(row.mPartitionId), dataAlloc);
     dataVal.AddMember("r_timestamp",      rapidjson::Value().SetString(readable_timestamp(row.mTimestamp).c_str(), dataAlloc), dataAlloc);
-     
+
     data.AddMember("doc", dataVal, dataAlloc);
     data.AddMember("doc_as_upsert", rapidjson::Value().SetBool(true), dataAlloc);
 
@@ -564,11 +563,11 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
             switch (datasetProvCore.get()) {
               case FileProvenanceConstants::STORE_NONE: break;
               case FileProvenanceConstants::STORE_STATE: {
-                std::string state = ElasticHelper::aliveState(ElasticHelper::stateId(row), projectIndex, row, mlAux.second, mlAux.first);
+                std::string state = ElasticHelper::aliveState(ElasticHelper::stateId(row), mMLIndex, row, mlAux.second, mlAux.first);
                 bulkOps.push_back(state);
               } break;
               case FileProvenanceConstants::STORE_ALL: {
-                std::string state = ElasticHelper::aliveState(ElasticHelper::stateId(row), projectIndex, row, mlAux.second, mlAux.first);
+                std::string state = ElasticHelper::aliveState(ElasticHelper::stateId(row), mMLIndex, row, mlAux.second, mlAux.first);
                 bulkOps.push_back(state);
                 std::string op = ElasticHelper::fileOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
                 bulkOps.push_back(op);
@@ -607,11 +606,11 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
             switch (datasetProvCore.get()) {
               case FileProvenanceConstants::STORE_NONE: break;
               case FileProvenanceConstants::STORE_STATE: {
-                std::string state = ElasticHelper::deadState(ElasticHelper::stateId(row), projectIndex);
+                std::string state = ElasticHelper::deadState(ElasticHelper::stateId(row), mMLIndex);
                 bulkOps.push_back(state);
               } break;
               case FileProvenanceConstants::STORE_ALL: {
-                std::string state = ElasticHelper::deadState(ElasticHelper::stateId(row), projectIndex);
+                std::string state = ElasticHelper::deadState(ElasticHelper::stateId(row), mMLIndex);
                 bulkOps.push_back(state);
                 std::string op = ElasticHelper::fileOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
                 bulkOps.push_back(op);
@@ -701,12 +700,12 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
           if (!skipElasticOp) {
             switch (datasetProvCore.get()) {
               case FileProvenanceConstants::ProvOpStoreType::STORE_NONE: {
-                std::string state = ElasticHelper::deadState(ElasticHelper::stateId(row), projectIndex);
+                std::string state = ElasticHelper::deadState(ElasticHelper::stateId(row), mMLIndex);
                 bulkOps.push_back(state);
               } break;
               case FileProvenanceConstants::ProvOpStoreType::STORE_STATE:
               case FileProvenanceConstants::ProvOpStoreType::STORE_ALL: {
-                std::string state = ElasticHelper::aliveState(ElasticHelper::stateId(row), projectIndex, row, mlAux.second, mlAux.first);
+                std::string state = ElasticHelper::aliveState(ElasticHelper::stateId(row), mMLIndex, row, mlAux.second, mlAux.first);
                 bulkOps.push_back(state);
               } break;
               default: {
@@ -729,18 +728,18 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
             switch (datasetProvCore.get()) {
               case FileProvenanceConstants::ProvOpStoreType::STORE_STATE: {
                 if (row.mXAttrName == FileProvenanceConstants::XATTR_PROJECT_IID) {
-                  std::string projIIdStateVal = ElasticHelper::addProjectIIdToState(ElasticHelper::stateId(row), projectIndex, row);
+                  std::string projIIdStateVal = ElasticHelper::addProjectIIdToState(ElasticHelper::stateId(row), mMLIndex, row);
                   bulkOps.push_back(projIIdStateVal);
                 }
-                std::string xattrStateVal = ElasticHelper::addXAttrToState(ElasticHelper::stateId(row), projectIndex, row, xattr.get().mValue);
+                std::string xattrStateVal = ElasticHelper::addXAttrToState(ElasticHelper::stateId(row), mMLIndex, row, xattr.get().mValue);
                 bulkOps.push_back(xattrStateVal);
               } break;
               case FileProvenanceConstants::ProvOpStoreType::STORE_ALL: {
                 if (row.mXAttrName == FileProvenanceConstants::XATTR_PROJECT_IID) {
-                  std::string projIIdStateVal = ElasticHelper::addProjectIIdToState(ElasticHelper::stateId(row), projectIndex, row);
+                  std::string projIIdStateVal = ElasticHelper::addProjectIIdToState(ElasticHelper::stateId(row), mMLIndex, row);
                   bulkOps.push_back(projIIdStateVal);
                 }
-                std::string xattrStateVal = ElasticHelper::addXAttrToState(ElasticHelper::stateId(row), projectIndex, row, xattr.get().mValue);
+                std::string xattrStateVal = ElasticHelper::addXAttrToState(ElasticHelper::stateId(row), mMLIndex, row, xattr.get().mValue);
                 bulkOps.push_back(xattrStateVal);
                 std::string xattrOpVal = ElasticHelper::addXAttrOp(ElasticHelper::opId(row), projectIndex, row, xattr.get().mValue, mlAux.second, mlAux.first);
                 bulkOps.push_back(xattrOpVal);
@@ -792,11 +791,11 @@ ProcessRowResult FileProvenanceElasticDataReader::process_row(FileProvenanceRow 
             switch (datasetProvCore.get()) {
               case FileProvenanceConstants::STORE_NONE: break;
               case FileProvenanceConstants::STORE_STATE: {
-                std::string xattrStateVal = ElasticHelper::deleteXAttrFromState(ElasticHelper::stateId(row), projectIndex, row);
+                std::string xattrStateVal = ElasticHelper::deleteXAttrFromState(ElasticHelper::stateId(row), mMLIndex, row);
                 bulkOps.push_back(xattrStateVal);
               } break;
               case FileProvenanceConstants::STORE_ALL: {
-                std::string xattrStateVal = ElasticHelper::deleteXAttrFromState(ElasticHelper::stateId(row), projectIndex, row);
+                std::string xattrStateVal = ElasticHelper::deleteXAttrFromState(ElasticHelper::stateId(row), mMLIndex, row);
                 bulkOps.push_back(xattrStateVal);
                 std::string xattrOpVal = ElasticHelper::deleteXAttrOp(ElasticHelper::opId(row), projectIndex, row, mlAux.second, mlAux.first);
                 bulkOps.push_back(xattrOpVal);

@@ -48,6 +48,7 @@ int main(int argc, char** argv) {
 
     std::string elastic_featurestore_index = "featurestore";
     std::string elastic_app_provenance_index = "appprovenance";
+    std::string elastic_ml_index = "ml";
 
     int lru_cap = DEFAULT_MAX_CAPACITY;
     int prov_file_lru_cap = DEFAULT_MAX_CAPACITY;
@@ -119,6 +120,7 @@ int main(int argc, char** argv) {
         ("index", po::value<std::string>(&elastic_index)->default_value(elastic_index), "Elastic index to add the data to.")
         ("featurestore_index", po::value<std::string>(&elastic_featurestore_index)->default_value(elastic_featurestore_index), "Elastic featurestore index.")
         ("app_provenance_index", po::value<std::string>(&elastic_app_provenance_index)->default_value(elastic_app_provenance_index), "Elastic index to add the app provenance data to.")
+        ("ml_provenance_index", po::value<std::string>(&elastic_ml_index)->default_value(elastic_ml_index), "Elastic index to add the ML provenance state data to.")
         ("elastic_batch",
          po::value<int>(&elastic_batch_size)->default_value(elastic_batch_size),
          "Elastic batch size in bytes for bulk requests")
@@ -255,7 +257,7 @@ int main(int argc, char** argv) {
                                        provenance_tu,
                                        poll_maxTimeToWait, config,
                                        hopsworks, elastic_index, elastic_featurestore_index,
-                                       elastic_app_provenance_index,
+                                       elastic_app_provenance_index, elastic_ml_index,
                                        elastic_batch_size, elastic_issue_time,
                                        lru_cap, prov_file_lru_cap, prov_core_lru_cap,
                                        recovery, stats, barrier,

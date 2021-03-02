@@ -49,7 +49,7 @@ public:
           const TableUnitConf mutations_tu, const TableUnitConf schemabased_tu,const TableUnitConf provenance_tu,
           const int poll_maxTimeToWait, const HttpClientConfig elastic_client_config, const bool hopsworks,
           const std::string elastic_search_index, const std::string elastic_featurestore_index,
-          const std::string elastic_app_provenance_index,
+          const std::string elastic_app_provenance_index, const std::string ml_index,
           const int elastic_batch_size, const int elastic_issue_time,
           const int lru_cap, const int prov_file_lru_cap, const int prov_core_lru_cap, const bool recovery, const bool stats,
           Barrier barrier, const bool hiveCleaner, const std::string
@@ -70,6 +70,7 @@ private:
   const std::string mElasticSearchIndex;
   const std::string mElasticFeaturestoreIndex;
   const std::string mElasticAppProvenanceIndex;
+  const std::string mMLIndex;
   const int mElasticBatchsize;
   const int mElasticIssueTime;
   const int mLRUCap;

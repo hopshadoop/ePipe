@@ -38,13 +38,14 @@ struct ProcessRowResult {
 
 class FileProvenanceElasticDataReader : public NdbDataReader<FileProvenanceRow, SConn> {
 public:
-  FileProvenanceElasticDataReader(SConn hopsConn, const bool hopsworks, int prov_file_lru_cap, int prov_core_lru_cap, int inodes_lru_cap);
+  FileProvenanceElasticDataReader(SConn hopsConn, const bool hopsworks, int prov_file_lru_cap, int prov_core_lru_cap, int inodes_lru_cap, const std::string ml_index);
   virtual ~FileProvenanceElasticDataReader();
 protected:
 
 private:
   FileProvenanceLogTable mFileLogTable;
   INodeTable inodesTable;
+  std::string mMLIndex;
 
   void processAddedandDeleted(Pq* data_batch, eBulk& bulk);
   ProcessRowResult rowResult(std::list<std::string> elasticOps, FileProvenancePK logPK,
@@ -61,11 +62,11 @@ private:
 class FileProvenanceElasticDataReaders :  public NdbDataReaders<FileProvenanceRow, SConn>{
   public:
     FileProvenanceElasticDataReaders(SConn* hopsConns, int num_readers,const bool hopsworks,
-          TimedRestBatcher* restEndpoint, int prov_file_lru_cap, int prov_core_lru_cap, int inodes_lru_ca) :
+          TimedRestBatcher* restEndpoint, int prov_file_lru_cap, int prov_core_lru_cap, int inodes_lru_ca, const std::string ml_index) :
     NdbDataReaders(restEndpoint){
       for(int i=0; i<num_readers; i++){
         FileProvenanceElasticDataReader* dr
-          = new FileProvenanceElasticDataReader(hopsConns[i], hopsworks, prov_file_lru_cap, prov_core_lru_cap, inodes_lru_ca);
+          = new FileProvenanceElasticDataReader(hopsConns[i], hopsworks, prov_file_lru_cap, prov_core_lru_cap, inodes_lru_ca, ml_index);
         dr->start(i, this);
         mDataReaders.push_back(dr);
       }
